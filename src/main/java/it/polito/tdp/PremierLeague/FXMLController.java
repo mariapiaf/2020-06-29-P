@@ -5,9 +5,13 @@
 package it.polito.tdp.PremierLeague;
 
 import java.net.URL;
+import java.time.Month;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ResourceBundle;
+
+import it.polito.tdp.PremierLeague.model.Arco;
+import it.polito.tdp.PremierLeague.model.Match;
 import it.polito.tdp.PremierLeague.model.Model;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -39,29 +43,58 @@ public class FXMLController {
     private TextField txtMinuti; // Value injected by FXMLLoader
 
     @FXML // fx:id="cmbMese"
-    private ComboBox<?> cmbMese; // Value injected by FXMLLoader
+    private ComboBox<Integer> cmbMese; // Value injected by FXMLLoader
 
     @FXML // fx:id="cmbM1"
-    private ComboBox<?> cmbM1; // Value injected by FXMLLoader
+    private ComboBox<Match> cmbM1; // Value injected by FXMLLoader
 
     @FXML // fx:id="cmbM2"
-    private ComboBox<?> cmbM2; // Value injected by FXMLLoader
+    private ComboBox<Match> cmbM2; // Value injected by FXMLLoader
 
     @FXML // fx:id="txtResult"
     private TextArea txtResult; // Value injected by FXMLLoader
 
     @FXML
     void doConnessioneMassima(ActionEvent event) {
-    	
+    	txtResult.clear();
+    	for(Arco a: this.model.getMatchMigliori()) {
+    		txtResult.appendText(a.toString()+"\n");
+    	}
     }
 
     @FXML
     void doCreaGrafo(ActionEvent event) {
-    	
+    	txtResult.clear();
+    	int mese = cmbMese.getValue();
+    	String minimo = txtMinuti.getText();
+    	int min = -1;
+    	try {
+    		min = Integer.parseInt(minimo);
+    	} catch(NumberFormatException nfe) {
+    		txtResult.setText("Devi inserire un numero");
+    		return;
+    	}
+    	if(mese != 0) {
+    		model.creaGrafo(mese, min);
+    		txtResult.appendText("# VERTICI: " + this.model.getNVertici()+"\n");
+    		txtResult.appendText("#ARCHI: " + this.model.getNArchi());
+    	}
+    	cmbM1.getItems().addAll(model.getVertici());
+    	cmbM2.getItems().addAll(model.getVertici());
     }
 
     @FXML
     void doCollegamento(ActionEvent event) {
+    	Match partenza = cmbM1.getValue();
+    	Match arrivo = cmbM2.getValue();
+    	
+    	txtResult.clear();
+    	if(partenza != null && arrivo != null) {
+    		model.getPercorso(partenza, arrivo);
+    	}
+    	for(Match m : model.getPercorso(partenza, arrivo)) {
+    		txtResult.appendText(m.toString()+"\n");
+    	}
     	
     }
 
@@ -80,6 +113,10 @@ public class FXMLController {
     public void setModel(Model model) {
     	this.model = model;
   
+    	for(int mese=01; mese<=12; mese++) {
+    		cmbMese.getItems().addAll(mese);
+    	}
+    	
     }
     
     

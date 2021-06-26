@@ -4,9 +4,13 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Month;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+
 import it.polito.tdp.PremierLeague.model.Action;
+import it.polito.tdp.PremierLeague.model.Arco;
 import it.polito.tdp.PremierLeague.model.Match;
 import it.polito.tdp.PremierLeague.model.Player;
 
@@ -60,11 +64,10 @@ public class PremierLeagueDAO {
 		}
 	}
 	
-	public List<Match> listAllMatches(){
+	public void listAllMatches(Map<Integer, Match> idMap){
 		String sql = "SELECT m.MatchID, m.TeamHomeID, m.TeamAwayID, m.teamHomeFormation, m.teamAwayFormation, m.resultOfTeamHome, m.date, t1.Name, t2.Name   "
 				+ "FROM Matches m, Teams t1, Teams t2 "
 				+ "WHERE m.TeamHomeID = t1.TeamID AND m.TeamAwayID = t2.TeamID";
-		List<Match> result = new ArrayList<Match>();
 		Connection conn = DBConnect.getConnection();
 
 		try {
@@ -72,12 +75,73 @@ public class PremierLeagueDAO {
 			ResultSet res = st.executeQuery();
 			while (res.next()) {
 
-				
-				Match match = new Match(res.getInt("m.MatchID"), res.getInt("m.TeamHomeID"), res.getInt("m.TeamAwayID"), res.getInt("m.teamHomeFormation"), 
-							res.getInt("m.teamAwayFormation"),res.getInt("m.resultOfTeamHome"), res.getTimestamp("m.date").toLocalDateTime(), res.getString("t1.Name"),res.getString("t2.Name"));
-				
+				if(!idMap.containsKey(res.getInt("m.MatchID"))) {
+					Match match = new Match(res.getInt("m.MatchID"), res.getInt("m.TeamHomeID"), res.getInt("m.TeamAwayID"), res.getInt("m.teamHomeFormation"), 
+								res.getInt("m.teamAwayFormation"),res.getInt("m.resultOfTeamHome"), res.getTimestamp("m.date").toLocalDateTime(), res.getString("t1.Name"),res.getString("t2.Name"));
+					
+					idMap.put(res.getInt("m.MatchID"), match);
+				}
+
+			}
+			conn.close();
+
+			
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public List<Match> getPartiteDelMese(int mese, Map<Integer, Match> idMap){
+		String sql = "SELECT * "
+				+ "FROM matches m "
+				+ "WHERE MONTH(m.Date) = ?";
+		List<Match> result = new ArrayList<Match>();
+		Connection conn = DBConnect.getConnection();
+
+		try {
+			PreparedStatement st = conn.prepareStatement(sql);
+			st.setInt(1, mese);
+			ResultSet res = st.executeQuery();
+			while (res.next()) {
+
+				Match match = idMap.get(res.getInt("MatchID"));
 				
 				result.add(match);
+
+			}
+			conn.close();
+			return result;
+			
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return null;
+		}
+		
+	}
+	
+	public List<Arco> getArchi(int mese, int min, Map<Integer, Match> idMap) {
+		String sql = "SELECT m1.MatchID as id1, m2.MatchID as id2, COUNT(*) AS peso "
+				+ "FROM matches m1, matches m2, actions a1, actions a2 "
+				+ "WHERE MONTH(m1.Date) = ? AND MONTH(m1.Date) = MONTH(m2.Date) "
+				+ "	AND a1.TimePlayed > ? AND a2.TimePlayed > ? "
+				+ "	AND a1.PlayerID = a2.PlayerID "
+				+ "	AND a1.MatchID = m1.MatchID AND a2.MatchID = m2.MatchID "
+				+ "	AND m1.MatchID > m2.MatchID "
+				+ "GROUP BY m1.MatchID, m2.MatchID"; 
+		
+		List<Arco> result = new ArrayList<Arco>();
+		Connection conn = DBConnect.getConnection();
+
+		try {
+			PreparedStatement st = conn.prepareStatement(sql);
+			st.setInt(1, mese);
+			st.setInt(2, min);
+			st.setInt(3, min);
+			ResultSet res = st.executeQuery();
+			while (res.next()) {
+				Match m1 = idMap.get(res.getInt("id1"));
+				Match m2 = idMap.get(res.getInt("id2"));
+				result.add(new Arco(m1, m2, res.getInt("peso")));
 
 			}
 			conn.close();
